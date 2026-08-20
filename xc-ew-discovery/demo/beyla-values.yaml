@@ -1,0 +1,29 @@
+# Beyla DaemonSet values for k3s on arm64.
+#
+# k3s uses containerd, not Docker. If observations arrive with an empty
+# Workload.Pod, the cgroup path below is the first thing to check.
+
+config:
+  data:
+    discovery:
+      services:
+        - k8s_namespace: demo
+    routes:
+      unmatched: heuristic
+    attributes:
+      kubernetes:
+        enable: true
+    otel_traces_export:
+      endpoint: http://ewd-collector.demo.svc:4317
+
+daemonset: true
+
+securityContext:
+  privileged: true
+
+env:
+  BEYLA_BPF_CONTEXT_PROPAGATION: "all"
+  BEYLA_KUBE_METADATA_ENABLE: "true"
+
+tolerations:
+  - operator: Exists
