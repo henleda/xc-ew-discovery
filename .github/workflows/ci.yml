@@ -16,8 +16,8 @@ jobs:
   build-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: xc-ew-discovery/go.mod
           cache: false
@@ -43,7 +43,7 @@ jobs:
     # with code review and the M6 egress test.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: no eBPF source (constraint 6 / D2 — the sensor is Beyla, not written here)
         run: |
           if find . \( -name '*.bpf.c' -o -name '*.bpf.o' \) | grep -q .; then
