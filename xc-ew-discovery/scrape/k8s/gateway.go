@@ -22,5 +22,7 @@ func (s *Scraper) Scrape(ctx context.Context) ([]model.Observation, error) {
 	// TODO(M4): list Ingress from networking.k8s.io.
 	// TODO(M4): resolve backendRefs to the owning workload so declared and
 	// observed rows key the same way.
+	// TODO(M10): list Istio VirtualService from networking.istio.io where a mesh
+	// is present (SPEC 2.3).
 	panic("not implemented: M4")
 }

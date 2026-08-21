@@ -1,6 +1,6 @@
 # DataPower fixtures
 
-DataPower Virtual Edition is amd64 only and will not run on the dev box. These fixtures let M5 proceed without an appliance.
+DataPower Gateway for Developers is amd64 and runs on the amd64 dev VM alongside k3s (D8). These fixtures let M5's tests run without the container.
 
 Capture real responses from an appliance over the network and commit them here, sanitized. Needed:
 

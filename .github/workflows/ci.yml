@@ -1,0 +1,82 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: xc-ew-discovery
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: xc-ew-discovery/go.mod
+          cache: false
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt needed on:"; echo "$unformatted"; exit 1
+          fi
+          echo "ok: gofmt clean"
+      - name: build
+        run: go build ./...
+      - name: vet
+        run: go vet ./...
+      - name: test
+        # M6: once collector/egress.go AssertNoBodies has its table-driven test,
+        # it runs here and enforces constraint 2 (no request/response body egress).
+        run: go test ./...
+
+  constraints:
+    # The shell-checkable half of /freeze-check. The semantic checks (schema
+    # matches SPEC 2.4, no body outside infer/, no Workload keyed on an IP) stay
+    # with code review and the M6 egress test.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: no eBPF source (constraint 6 / D2 — the sensor is Beyla, not written here)
+        run: |
+          if find . \( -name '*.bpf.c' -o -name '*.bpf.o' \) | grep -q .; then
+            echo "::error::eBPF source/object files present; the sensor is Grafana Beyla, not written here (D2)."
+            exit 1
+          fi
+          if grep -rEnI 'SEC\("|BPF_MAP|bpf_probe_|bpf_map_' --include='*.c' --include='*.h' --include='*.go' .; then
+            echo "::error::eBPF program markers found; forbidden by constraint 6."
+            exit 1
+          fi
+          echo "ok: no eBPF source"
+      - name: no ClassifierHit value field (constraint 3 — type and location, never value)
+        run: |
+          block=$(awk '/type ClassifierHit struct/{f=1} f{print} /^}/{if(f)exit}' model/event.go)
+          echo "$block"
+          if echo "$block" | grep -qiE '\bvalue\b'; then
+            echo "::error::ClassifierHit carries a value-bearing field; forbidden by constraint 3."
+            exit 1
+          fi
+          echo "ok: ClassifierHit records type and location only"
+      - name: no new top-level package (the structure is fixed)
+        run: |
+          allowed=" cmd collector enrich infer model scrape sensor "
+          fail=0
+          for d in */; do
+            d=${d%/}
+            if find "$d" -name '*.go' 2>/dev/null | grep -q .; then
+              echo "top-level Go package: $d"
+              case "$allowed" in
+                *" $d "*) ;;
+                *) echo "::error::unexpected top-level package: $d"; fail=1 ;;
+              esac
+            fi
+          done
+          if [ "$fail" = 0 ]; then echo "ok: top-level package set unchanged"; fi
+          exit $fail

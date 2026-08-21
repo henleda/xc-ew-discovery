@@ -1,6 +1,6 @@
-GOARCH ?= arm64
+GOARCH ?= amd64
 
-.PHONY: build test fmt vet dev-cluster deploy-demo deploy-sensor check-env clean
+.PHONY: build test fmt vet dev-cluster deploy-demo deploy-sensor uninstall check-env clean
 
 build:
 	GOARCH=$(GOARCH) go build ./...
@@ -29,6 +29,12 @@ deploy-demo:
 deploy-sensor:
 	helm repo add grafana https://grafana.github.io/helm-charts
 	helm upgrade --install beyla grafana/beyla -n beyla --create-namespace -f demo/beyla-values.yaml
+
+# uninstall removes the sensor and asserts a clean node. P0#12, M9.
+uninstall:
+	helm uninstall beyla -n beyla || true
+	@echo "P0#12 clean-node check:"
+	@ls /sys/fs/bpf 2>/dev/null | grep -i beyla && echo "FAIL: pinned BPF objects remain" || echo "clean: no pinned BPF objects"
 
 clean:
 	rm -rf ./specs ./bin

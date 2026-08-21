@@ -115,7 +115,7 @@ Lagging, measured over two renewal cycles:
 
 Six components across four planes.
 
-**Sensor plane.** Privileged DaemonSet on each node. Socket-layer kprobes and tracepoints for plaintext. Uprobes on libssl, libcrypto, and Go crypto/tls for encrypted traffic. Emits raw L7 events over a local socket to the collector. **Adopt Grafana Beyla rather than build.** Apache 2, already handles Go symbol offset resolution across ABI changes, already parses HTTP, HTTP/2, gRPC, and SQL. The fork point is the export format, not the capture logic. Building this in-house adds two quarters and a kernel engineering hire.
+**Sensor plane.** Privileged DaemonSet on each node. Socket-layer kprobes and tracepoints for plaintext. Uprobes on libssl, libcrypto, and Go crypto/tls for encrypted traffic. Emits raw L7 events to the in-cluster collector over Beyla's OTLP export. **Adopt Grafana Beyla rather than build.** Apache 2, already handles Go symbol offset resolution across ABI changes, already parses HTTP, HTTP/2, gRPC, and SQL. The fork point is the export format, not the capture logic. Building this in-house adds two quarters and a kernel engineering hire.
 
 **Enrichment plane.** Watches kube-apiserver. Maps socket tuple, PID, and cgroup to pod, namespace, service account, and workload owner. This component turns an endpoint list into a caller graph, which is the difference between a report and a product.
 
@@ -135,15 +135,18 @@ Every observation carries these fields. The identity, verb, path template, and d
 observation_id, timestamp, sensor_id, cluster_id
 
 source:      namespace, service_account, workload_kind, workload_name,
-             pod, node, container_image, pid
+             pod, node, container_image, pid, attributed
 destination: namespace, service_account, workload_kind, workload_name,
-             service, port, cluster_ip
+             pod, node, container_image, pid,
+             service, port, cluster_ip, attributed
 transport:   protocol, tls_state, mtls_peer_identity
 l7:          method, host, path_raw, path_template, status,
-             content_type, grpc_service, grpc_method, soap_action
+             content_type, grpc_service, grpc_method, soap_action,
+             authenticated
 schema:      request_fingerprint, response_fingerprint
-sensitivity: classifier_hits[] (type only, never value)
+sensitivity: classifier_hits[] (type and location, never value)
 direction:   east_west | north_south | egress
+confidence:  source, sampled, sample_rate, attributed   (see D7)
 ```
 
 ## 2.5 Requirements
@@ -155,7 +158,7 @@ direction:   east_west | north_south | egress
 3. **Sensor captures TLS payloads** via uprobes on OpenSSL, BoringSSL, and Go crypto/tls, including stripped Go binaries.
 4. **Sensor enforces a hard resource cap** with a configurable CPU and memory ceiling, and sheds load by sampling rather than by growing. Given sustained traffic above capacity, when the cap is reached, then the sensor drops events and reports the drop rate rather than consuming node resources.
 5. **Enrichment resolves every observation to workload identity** within one reconciliation interval. Observations resolving only to an IP are marked unattributed and counted.
-6. **Collector performs schema inference locally** and emits OpenAPI 3.1 per discovered service.
+6. **Schema inference runs locally** and emits OpenAPI 3.1 per discovered service.
 7. **Path templating collapses variable segments** so `/users/1234/orders` and `/users/5678/orders` produce one endpoint.
 8. **No request or response body leaves the cluster.** Verified by an egress capture test in CI.
 9. **Control-plane scrapers ingest declared inventory** from Gateway API, Ingress, and at least two third-party gateways.
@@ -193,10 +196,10 @@ direction:   east_west | north_south | egress
 Ordered to resolve the largest unknown first and reach a demo before the hard integration work.
 
 **M0. Java spike. Two days. Do this before writing anything else.**
-Two Spring Boot services calling each other over mTLS on a kind cluster. Run Beyla against them. Document exactly what is captured and what is missing. This is the go/no-go for the FSI story and it determines whether the roadmap carries a JVMTI dependency.
+Two Spring Boot services calling each other over mTLS on the k3s cluster. Run Beyla against them. Document exactly what is captured and what is missing. This is the go/no-go for the FSI story and it determines whether the roadmap carries a JVMTI dependency.
 
 **M1. Sensor to stdout.**
-Beyla DaemonSet on kind or k3s with a polyglot demo app. Confirm HTTP, HTTP/2, and gRPC capture in both plaintext and TLS. Definition of done: raw L7 events printing with PIDs attached.
+Beyla DaemonSet on k3s with a polyglot demo app. Confirm HTTP, HTTP/2, and gRPC capture in both plaintext and TLS. Definition of done: raw L7 events printing with PIDs attached.
 
 **M2. Enrichment.**
 Add a kube-apiserver watch. Resolve events to namespace, service account, and workload. Definition of done: a caller graph emitted as JSON with no IPs in it.
@@ -208,10 +211,12 @@ Path templating and schema inference locally. Definition of done: valid OpenAPI 
 Scrape Gateway API and Ingress objects. Diff against M3 output. Definition of done: a screen showing shadow endpoints and zombie endpoints side by side.
 
 **M5. DataPower.**
-SOMA scrape against DataPower Virtual Edition for declared WSP and MPGW services. Merge into the M4 inventory model. Definition of done: a SOAP service appearing in the same inventory as a gRPC service.
+SOMA scrape against DataPower Gateway for Developers for declared WSP and MPGW services. Merge into the M4 inventory model. Definition of done: a SOAP service appearing in the same inventory as a gRPC service.
 
 **M6. CE integration.**
 Replace the stdout collector with a CE in-cluster. Confirm schema-only egress with a packet capture on the CE uplink.
+
+**Install-approval and coverage work.** Three P0 requirements sit outside this demo-first sequence: the resource cap and drop reporting (P0#4), dry-run install preview (P0#13), and uninstall with a clean-node assertion (P0#12). The two third-party gateways P0#9 requires (Kong, Apigee, APIM, AWS) and Istio VirtualService also land after the demo. These are tracked as M7 through M10 in `docs/MILESTONES.md`. They gate GA, not the demo, and none depends on M0.
 
 ### Suggested repo layout
 
@@ -220,12 +225,12 @@ Replace the stdout collector with a CE in-cluster. Confirm schema-only egress wi
 /enrich        kube-apiserver watch, identity resolution
 /infer         path templating, schema inference, classification
 /scrape
-  /k8s         Gateway API, Ingress
+  /k8s         Gateway API, Ingress, Istio VirtualService
   /gateways    Kong, Apigee, APIM, AWS
   /datapower   SOMA and REST management client
 /model         shared event and inventory schema, single source of truth
 /collector     CE integration and egress
-/demo          kind cluster, polyglot app, DataPower VE compose
+/demo          k3s manifests, polyglot app, DataPower Gateway for Developers
 ```
 
-Build `/model` first and treat it as frozen. Every other component depends on the event schema in 2.4, and changing it after M3 forces rework across all six.
+Build `/model` first and treat it as frozen — both `event.go` and `inventory.go`, per D3 and D10. Every other component depends on the schema in `/model`, and changing it after M3 forces rework across all six.

@@ -17,7 +17,7 @@ Write the answers into `docs/DECISIONS.md` under "M0 result".
 1. Does Beyla produce any observation at all for the Java-to-Java call, even without payload.
 2. Does it produce L7 detail: method, path, status.
 3. Does it produce payload shape.
-4. Same three questions on arm64 specifically, since Go uprobe behavior on arm64 has had gaps and Java capture takes a different path.
+4. Whether the answer changes on arm64. Out of scope for this spike: the dev box is amd64 (D8), so run the spike there. arm64 gets one validation pass on a Graviton EKS node group before GA, not here.
 5. If payload capture fails, what a JVMTI agent costs in install friction. A second agent inside the JVM is a different approval conversation than a node DaemonSet, so price that honestly.
 
 ## Decision this drives

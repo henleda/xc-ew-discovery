@@ -4,7 +4,7 @@ description: Verify the frozen schema and the hard constraints have not drifted
 
 Check the following and report any violation with the file and line.
 
-1. `model/event.go` matches the field set recorded in `docs/DECISIONS.md` D3. Any addition, removal, rename, or type change without a corresponding decision entry is a violation.
+1. `model/event.go` matches the field set enumerated in `docs/SPEC.md` §2.4 (the canonical list; D3 freezes it), and `model/inventory.go` is unchanged except through a decision entry (frozen per D10). Any addition, removal, rename, or type change to either without a corresponding `docs/DECISIONS.md` entry is a violation.
 2. No `ClassifierHit` value-bearing field exists anywhere in the repo.
 3. No code path stores, logs, or transmits a request or response body outside `infer/`.
 4. `collector/egress.go` has no bypass, debug flag, or verbose mode that skips `AssertNoBodies`.
