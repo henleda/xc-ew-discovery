@@ -24,14 +24,16 @@ type Client struct {
 // Scrape returns declared WSP and MPGW services as observations with
 // Confidence.Source set to SourceDataPowerSOMA.
 //
-// M5. The appliance is amd64 only and will not run on the dev box. Develop
-// against testdata fixtures and validate over the network against a real
-// appliance before closing the milestone. See docs/ENVIRONMENT.md.
+// M5. DataPower Gateway for Developers is amd64 and runs on the amd64 dev VM
+// alongside k3s (D8). Develop against testdata fixtures so tests need no
+// appliance, and validate against the local container before closing the
+// milestone. See docs/ENVIRONMENT.md.
 func (c *Client) Scrape(ctx context.Context) ([]model.Observation, error) {
 	// TODO(M5): get-config for WSGateway and MultiProtocolGateway objects.
 	// TODO(M5): resolve WSDL references to operations so a SOAP action becomes
 	// an endpoint row rather than a service row.
 	// TODO(M5): map each service to a synthetic Workload so DataPower rows key
 	// the same way cluster rows do. Namespace becomes the appliance domain.
+	// TODO(M5): resolve API Connect definitions to endpoints (SPEC 2.3).
 	panic("not implemented: M5")
 }

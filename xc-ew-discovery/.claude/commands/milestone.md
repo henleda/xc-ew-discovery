@@ -1,6 +1,6 @@
 ---
 description: Start work on a milestone with its definition of done in context
-argument-hint: "<M0|M1|M2|M3|M4|M5|M6>"
+argument-hint: "<M0|M1|M2|M3|M4|M5|M6|M7|M8|M9|M10>"
 ---
 
 Work milestone $ARGUMENTS from `docs/MILESTONES.md`.

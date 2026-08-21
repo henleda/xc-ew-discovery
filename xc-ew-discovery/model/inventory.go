@@ -1,5 +1,9 @@
 package model
 
+// FROZEN. inventory.go is part of the shared contract and is frozen on the same
+// terms as event.go: no field added, removed, renamed, or retyped without a
+// docs/DECISIONS.md entry first. See D3 and D10.
+
 import "time"
 
 // State is the declared-versus-observed classification. This drives the
@@ -45,12 +49,12 @@ type Endpoint struct {
 // Coverage is the trust mechanic. Every count in the UI renders next to these
 // numbers, because the product asks an analyst to trust a negative. See D7.
 type Coverage struct {
-	NodesTotal        int     `json:"nodes_total"`
-	NodesInstrumented int     `json:"nodes_instrumented"`
-	NodesExcluded     int     `json:"nodes_excluded"`
-	ExclusionReasons  []string `json:"exclusion_reasons,omitempty"`
-	UnattributedRate  float64 `json:"unattributed_rate"`
-	SampleLossRate    float64 `json:"sample_loss_rate"`
+	NodesTotal        int       `json:"nodes_total"`
+	NodesInstrumented int       `json:"nodes_instrumented"`
+	NodesExcluded     int       `json:"nodes_excluded"`
+	ExclusionReasons  []string  `json:"exclusion_reasons,omitempty"`
+	UnattributedRate  float64   `json:"unattributed_rate"`
+	SampleLossRate    float64   `json:"sample_loss_rate"`
 	WindowStart       time.Time `json:"window_start"`
 	WindowEnd         time.Time `json:"window_end"`
 }

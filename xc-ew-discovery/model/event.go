@@ -67,6 +67,9 @@ type Observation struct {
 // Attributed is false when enrichment failed to resolve the workload. Such
 // observations are counted in the unattributed bucket and never emitted with
 // ClusterIP standing in for identity. See D4.
+//
+// This flag is per-peer. The observation-level roll-up is Confidence.Attributed,
+// true only when both peers resolved. See D11.
 type Peer struct {
 	Workload   Workload `json:"workload"`
 	Service    string   `json:"service,omitempty"`
@@ -98,16 +101,16 @@ type Transport struct {
 // the key the inventory groups on. PathRaw stays for debugging and never
 // reaches the inventory.
 type L7 struct {
-	Method       string `json:"method,omitempty"`
-	Host         string `json:"host,omitempty"`
-	PathRaw      string `json:"path_raw,omitempty"`
-	PathTemplate string `json:"path_template,omitempty"`
-	Status       int    `json:"status,omitempty"`
-	ContentType  string `json:"content_type,omitempty"`
-	GRPCService  string `json:"grpc_service,omitempty"`
-	GRPCMethod   string `json:"grpc_method,omitempty"`
-	SOAPAction   string `json:"soap_action,omitempty"`
-	Authenticated bool  `json:"authenticated"`
+	Method        string `json:"method,omitempty"`
+	Host          string `json:"host,omitempty"`
+	PathRaw       string `json:"path_raw,omitempty"`
+	PathTemplate  string `json:"path_template,omitempty"`
+	Status        int    `json:"status,omitempty"`
+	ContentType   string `json:"content_type,omitempty"`
+	GRPCService   string `json:"grpc_service,omitempty"`
+	GRPCMethod    string `json:"grpc_method,omitempty"`
+	SOAPAction    string `json:"soap_action,omitempty"`
+	Authenticated bool   `json:"authenticated"`
 }
 
 // SchemaRef carries shape hashes, never payloads. See constraint 2 in CLAUDE.md.
@@ -130,6 +133,10 @@ type ClassifierHit struct {
 //
 // Every source populates this on every observation. An unpopulated Confidence
 // is a bug, not a default.
+//
+// Attributed here is the observation roll-up: true only when both peers
+// resolved (source.Attributed && destination.Attributed). Coverage.UnattributedRate
+// is computed from it. See D11.
 type Confidence struct {
 	Source     Source  `json:"source"`
 	Sampled    bool    `json:"sampled"`

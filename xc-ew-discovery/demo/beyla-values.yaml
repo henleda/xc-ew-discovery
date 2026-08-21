@@ -1,4 +1,4 @@
-# Beyla DaemonSet values for k3s on arm64.
+# Beyla DaemonSet values for k3s on the amd64 dev VM.
 #
 # k3s uses containerd, not Docker. If observations arrive with an empty
 # Workload.Pod, the cgroup path below is the first thing to check.
@@ -14,12 +14,24 @@ config:
       kubernetes:
         enable: true
     otel_traces_export:
+      # ewd-collector is deployed in-cluster at M6. Until then the dev collector
+      # (`ewd collector` / `ewd sensor --stdout`) stands in. See docs/MILESTONES.md.
       endpoint: http://ewd-collector.demo.svc:4317
 
 daemonset: true
 
 securityContext:
   privileged: true
+
+# Hard resource ceiling. P0#4: the sensor stays under this and sheds by sampling
+# rather than growing; the loss is reported as Coverage.SampleLossRate.
+resources:
+  limits:
+    cpu: 500m
+    memory: 300Mi
+  requests:
+    cpu: 100m
+    memory: 100Mi
 
 env:
   BEYLA_BPF_CONTEXT_PROPAGATION: "all"

@@ -56,6 +56,54 @@ Forecloses: nothing in v1. arm64 validation moves to a Graviton EKS node group b
 
 Reason: the arm64 path bought a hardware constraint and paid for it with two workarounds and an untested uprobe surface.
 
+## D9. Authenticated flag ratified on L7 and Endpoint
+
+Decided. `L7.Authenticated` and `Endpoint.Authenticated` stay in the frozen
+schema. They were present before this entry, which D3 forbids; this entry
+ratifies them rather than removing a field the product needs, and `authenticated`
+is added to the SPEC 2.4 field list in the same change so the two agree.
+
+The "unauthenticated" sort key in CLAUDE.md is a concrete, non-composite fact the
+inventory sorts on. Surfacing it requires the observation to carry authentication
+state, so the field is load-bearing, not speculative like the v2 policy fields.
+
+Forecloses: nothing.
+
+Reason: the field is needed and already shipped. The defect was process, not the
+field. Recorded here so the schema, SPEC 2.4, and `/freeze-check` agree.
+
+## D10. The freeze covers all of model/, not only event.go
+
+Decided. `model/inventory.go` (State, Endpoint, Coverage, Inventory) is frozen on
+the same terms as `model/event.go`. Changing a field in either requires an entry
+here first. CLAUDE.md constraint 4 and `/freeze-check` are updated to name both.
+
+SPEC 2.7 calls `/model` the "shared event and inventory schema, single source of
+truth" and says to treat it as frozen. M4 and M5 merge into Endpoint and
+Coverage, so a retype there after M3 forces the same cross-component rework D3
+exists to prevent.
+
+Forecloses: silent edits to the inventory contract.
+
+Reason: D3 named only event.go, leaving the inventory half of the same contract
+ungated. This closes that gap.
+
+## D11. Attributed is per-peer; Confidence.Attributed is the observation roll-up
+
+Decided. `Peer.Attributed` records whether that one peer resolved to a workload.
+`Confidence.Attributed` is the observation-level roll-up and is true only when
+both peers resolved: `source.Attributed && destination.Attributed`.
+
+An observation is a caller-graph edge, and an edge needs both ends named to key on
+identity (D4). A half-resolved observation counts as unattributed for coverage, so
+`Confidence.Attributed` is the value `Coverage.UnattributedRate` is computed from;
+the per-peer flags say which end failed.
+
+Forecloses: reading either flag as a synonym for the other.
+
+Reason: both flags existed with no rule for which governs, so enrich, the sensor,
+and Coverage could diverge. This fixes the meaning before enrich is written.
+
 ## M0 result
 
 Pending. Record the Java TLS finding here before starting M1.
